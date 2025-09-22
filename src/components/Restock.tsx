@@ -248,4 +248,15 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
                         <span>{isUpdating ? 'Updating...' : 'Restock'}</span>
                       </button>
                     )}
-                    
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Restock;

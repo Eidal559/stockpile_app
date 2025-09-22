@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Save, X } from 'lucide-react';
 import { productService } from '../lib/localStorage';
-import { User } from '../App';
+import type { User } from '../App';
 
 interface AddProductProps {
   user: User;
