@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Package, Edit, Trash2, Eye, AlertTriangle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { productService } from '../lib/localStorage';
 import { User, Product } from '../App';
 
 interface ViewInventoryProps {
@@ -31,14 +31,8 @@ const ViewInventory: React.FC<ViewInventoryProps> = ({ user }) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-
-      setProducts(data || []);
+      const data = await productService.getAll();
+      setProducts(data);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -86,18 +80,17 @@ const ViewInventory: React.FC<ViewInventoryProps> = ({ user }) => {
   };
 
   const handleDelete = async (productId: string) => {
+    if (user.role !== 'admin') {
+      alert('Only administrators can delete products.');
+      return;
+    }
+
     if (!window.confirm('Are you sure you want to delete this product?')) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
-
+      await productService.delete(productId);
       setProducts(products.filter(p => p.id !== productId));
     } catch (error) {
       console.error('Error deleting product:', error);

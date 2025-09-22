@@ -4,14 +4,16 @@ import {
   TrendingDown, 
   AlertTriangle, 
   DollarSign,
-  Users,
-  ShoppingCart
+  Plus,
+  RefreshCw,
+  BarChart3
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { productService } from '../lib/localStorage';
 import { User, Product } from '../App';
 
 interface DashboardProps {
   user: User;
+  onViewChange: (view: 'dashboard' | 'add-product' | 'inventory' | 'restock' | 'reports') => void;
 }
 
 interface DashboardStats {
@@ -21,7 +23,7 @@ interface DashboardStats {
   outOfStockItems: number;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onViewChange }) => {
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
     lowStockItems: 0,
@@ -39,34 +41,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     try {
       setLoading(true);
       
-      // Fetch all products
-      const { data: products, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const products = await productService.getAll();
 
-      if (error) throw error;
+      // Calculate stats
+      const totalProducts = products.length;
+      const lowStockItems = products.filter(p => p.current_stock <= p.min_stock_level && p.current_stock > 0).length;
+      const outOfStockItems = products.filter(p => p.current_stock === 0).length;
+      const totalValue = products.reduce((sum, p) => sum + (p.current_stock * p.cost_price), 0);
 
-      if (products) {
-        // Calculate stats
-        const totalProducts = products.length;
-        const lowStockItems = products.filter(p => p.current_stock <= p.min_stock_level && p.current_stock > 0).length;
-        const outOfStockItems = products.filter(p => p.current_stock === 0).length;
-        const totalValue = products.reduce((sum, p) => sum + (p.current_stock * p.cost_price), 0);
+      setStats({
+        totalProducts,
+        lowStockItems,
+        totalValue,
+        outOfStockItems
+      });
 
-        setStats({
-          totalProducts,
-          lowStockItems,
-          totalValue,
-          outOfStockItems
-        });
-
-        // Set low stock products for display
-        const lowStock = products
-          .filter(p => p.current_stock <= p.min_stock_level && p.current_stock > 0)
-          .slice(0, 5);
-        setLowStockProducts(lowStock);
-      }
+      // Set low stock products for display
+      const lowStock = products
+        .filter(p => p.current_stock <= p.min_stock_level && p.current_stock > 0)
+        .slice(0, 5);
+      setLowStockProducts(lowStock);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -81,7 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     color: string;
     prefix?: string;
   }) => (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-500 text-sm font-medium">{title}</p>
@@ -170,15 +164,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => onViewChange('add-product')}
+            className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <Plus className="text-orange-500" size={20} />
             <span className="font-medium">Add New Product</span>
           </button>
-          <button className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => onViewChange('restock')}
+            className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <RefreshCw className="text-teal-500" size={20} />
             <span className="font-medium">Restock Items</span>
           </button>
-          <button className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={() => onViewChange('reports')}
+            className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <BarChart3 className="text-blue-500" size={20} />
             <span className="font-medium">View Reports</span>
           </button>

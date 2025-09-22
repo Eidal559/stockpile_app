@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
+import { authService } from './lib/localStorage';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
 import Navigation from './components/Navigation';
@@ -39,77 +39,32 @@ function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'add-product' | 'inventory' | 'restock' | 'reports'>('dashboard');
 
   useEffect(() => {
-    checkUser();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // Check if user is already logged in
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+    }
+    setLoading(false);
   }, []);
 
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setUser({
-          id: data.id,
-          email: data.email,
-          role: data.role
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-    }
-  };
-
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setCurrentView('dashboard');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await authService.signOut();
+    setUser(null);
+    setCurrentView('dashboard');
   };
 
   const renderCurrentView = () => {
     switch (currentView) {
       case 'add-product':
-        return <AddProduct user={user} />;
+        return <AddProduct user={user!} />;
       case 'inventory':
-        return <ViewInventory user={user} />;
+        return <ViewInventory user={user!} />;
       case 'restock':
-        return <Restock user={user} />;
+        return <Restock user={user!} />;
       case 'reports':
-        return <Reports user={user} />;
+        return <Reports user={user!} />;
       default:
-        return <Dashboard user={user} />;
+        return <Dashboard user={user!} onViewChange={setCurrentView} />;
     }
   };
 

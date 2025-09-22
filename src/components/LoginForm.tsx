@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { authService } from '../lib/localStorage';
 import { User } from '../App';
+import { Package } from 'lucide-react';
 
 interface LoginFormProps {
   onLogin: (user: User) => void;
@@ -18,31 +19,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     setError(null);
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) throw authError;
-
-      if (data.user) {
-        // Fetch user profile
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        onLogin({
-          id: profile.id,
-          email: profile.email,
-          role: profile.role
-        });
+      const { user, error } = await authService.signIn(email, password);
+      
+      if (error) {
+        setError(error);
+      } else if (user) {
+        onLogin(user);
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (err: any) {
+      setError('An error occurred during login');
     } finally {
       setLoading(false);
     }
@@ -52,11 +37,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
         <div className="text-center mb-8">
-          <img 
-            src="/stockpile_logo.jpg" 
-            alt="Stockpile Logo" 
-            className="mx-auto h-16 w-auto mb-4"
-          />
+          <div className="flex justify-center mb-4">
+            <div className="bg-orange-500 p-3 rounded-full">
+              <Package size={32} className="text-white" />
+            </div>
+          </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to Stockpile</h1>
           <p className="text-gray-600">Sign in to manage your inventory</p>
         </div>
@@ -74,6 +59,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               required
               disabled={loading}
+              placeholder="admin@stockpile.com or user@stockpile.com"
             />
           </div>
 
@@ -89,6 +75,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               required
               disabled={loading}
+              placeholder="admin123 or user123"
             />
           </div>
 
@@ -108,9 +95,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">
-            Hardware Store Inventory Management System
-          </p>
+          <div className="bg-gray-50 rounded-lg p-4 mt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</p>
+            <div className="text-xs text-gray-600 space-y-1">
+              <p><strong>Admin:</strong> admin@stockpile.com / admin123</p>
+              <p><strong>User:</strong> user@stockpile.com / user123</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

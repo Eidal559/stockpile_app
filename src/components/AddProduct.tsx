@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Save, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Save, X } from 'lucide-react';
+import { productService } from '../lib/localStorage';
 import { User } from '../App';
 
 interface AddProductProps {
@@ -49,22 +49,27 @@ const AddProduct: React.FC<AddProductProps> = ({ user }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check if user has permission (only admins can add products)
+    if (user.role !== 'admin') {
+      setMessage({ type: 'error', text: 'Only administrators can add products.' });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
     try {
       const sku = formData.sku || generateSKU();
       
-      const { error } = await supabase
-        .from('products')
-        .insert([{
-          ...formData,
-          sku
-        }]);
-
-      if (error) throw error;
+      await productService.create({
+        ...formData,
+        sku
+      });
 
       setMessage({ type: 'success', text: 'Product added successfully!' });
+      
+      // Reset form
       setFormData({
         name: '',
         description: '',
@@ -81,7 +86,7 @@ const AddProduct: React.FC<AddProductProps> = ({ user }) => {
         location: ''
       });
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -105,6 +110,20 @@ const AddProduct: React.FC<AddProductProps> = ({ user }) => {
     });
     setMessage(null);
   };
+
+  if (user.role !== 'admin') {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Add New Product</h1>
+          <p className="text-gray-600">Add a new item to your inventory system.</p>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <p className="text-yellow-800">Only administrators can add new products. Please contact your admin if you need to add inventory items.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

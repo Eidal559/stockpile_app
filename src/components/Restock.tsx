@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, Plus, Check } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { RefreshCw, AlertTriangle, Check } from 'lucide-react';
+import { productService } from '../lib/localStorage';
 import { User, Product } from '../App';
 
 interface RestockProps {
@@ -26,15 +26,14 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
     try {
       setLoading(true);
       
-      const { data: products, error } = await supabase
-        .from('products')
-        .select('*')
-        .or('current_stock.lte.min_stock_level,current_stock.eq.0')
-        .order('current_stock');
+      const products = await productService.getAll();
+      
+      // Filter products that need restocking
+      const needsRestock = products.filter(product => 
+        product.current_stock <= product.min_stock_level || product.current_stock === 0
+      );
 
-      if (error) throw error;
-
-      const items: RestockItem[] = (products || []).map(product => {
+      const items: RestockItem[] = needsRestock.map(product => {
         const suggestedQuantity = Math.max(
           product.max_stock_level - product.current_stock,
           product.min_stock_level - product.current_stock
@@ -66,6 +65,11 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
   };
 
   const handleRestock = async (productId: string) => {
+    if (user.role !== 'admin') {
+      alert('Only administrators can restock products.');
+      return;
+    }
+
     const item = restockItems.find(i => i.product.id === productId);
     if (!item) return;
 
@@ -74,21 +78,16 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
     try {
       const newStock = item.product.current_stock + item.actualQuantity;
       
-      const { error } = await supabase
-        .from('products')
-        .update({ 
-          current_stock: newStock,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', productId);
-
-      if (error) throw error;
+      await productService.update(productId, { 
+        current_stock: newStock
+      });
 
       // Remove item from restock list
       setRestockItems(items => items.filter(i => i.product.id !== productId));
       
     } catch (error) {
       console.error('Error restocking product:', error);
+      alert('Failed to restock product. Please try again.');
     } finally {
       setUpdating(null);
     }
@@ -137,6 +136,14 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
               Products Requiring Restock ({restockItems.length})
             </h2>
           </div>
+
+          {user.role !== 'admin' && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                Note: Only administrators can perform restock operations. Contact your admin to restock these items.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-4">
             {restockItems.map((item) => {
@@ -194,7 +201,7 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
                           <button
                             onClick={() => updateQuantity(item.product.id, item.actualQuantity - 1)}
                             className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded text-sm"
-                            disabled={isUpdating}
+                            disabled={isUpdating || user.role !== 'admin'}
                           >
                             -
                           </button>
@@ -204,12 +211,12 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
                             onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value) || 0)}
                             className="w-20 px-2 py-1 border border-gray-300 rounded text-center"
                             min="0"
-                            disabled={isUpdating}
+                            disabled={isUpdating || user.role !== 'admin'}
                           />
                           <button
                             onClick={() => updateQuantity(item.product.id, item.actualQuantity + 1)}
                             className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded text-sm"
-                            disabled={isUpdating}
+                            disabled={isUpdating || user.role !== 'admin'}
                           >
                             +
                           </button>
@@ -227,27 +234,18 @@ const Restock: React.FC<RestockProps> = ({ user }) => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleRestock(item.product.id)}
-                      disabled={isUpdating || item.actualQuantity === 0}
-                      className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isUpdating ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      ) : (
-                        <RefreshCw size={16} />
-                      )}
-                      <span>{isUpdating ? 'Updating...' : 'Restock'}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Restock;
+                    {user.role === 'admin' && (
+                      <button
+                        onClick={() => handleRestock(item.product.id)}
+                        disabled={isUpdating || item.actualQuantity === 0}
+                        className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdating ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <RefreshCw size={16} />
+                        )}
+                        <span>{isUpdating ? 'Updating...' : 'Restock'}</span>
+                      </button>
+                    )}
+                    
