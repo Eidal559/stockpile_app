@@ -135,9 +135,9 @@ initializeData();
 
 // User management
 export const authService = {
-  signIn: async (email: string, password: string): Promise<{ user: User; error: string | null }> => {
+  signIn: async (email: string, password: string): Promise<{ user: User | null; error: string | null }> => {
     const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
+    const user = users.find((u: unknown) => u.email === email && u.password === password);
     
     if (user) {
       const userData: User = { id: user.id, email: user.email, role: user.role };
@@ -145,7 +145,7 @@ export const authService = {
       return { user: userData, error: null };
     }
     
-    return { user: null as any, error: 'Invalid email or password' };
+    return { user: null, error: 'Invalid email or password' };
   },
 
   signOut: async (): Promise<void> => {

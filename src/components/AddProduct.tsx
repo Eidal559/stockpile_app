@@ -85,7 +85,8 @@ const AddProduct: React.FC<AddProductProps> = ({ user }) => {
         supplier: '',
         location: ''
       });
-    } catch (error: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error: unknown) {
       setMessage({ type: 'error', text: 'Failed to add product. Please try again.' });
     } finally {
       setLoading(false);
