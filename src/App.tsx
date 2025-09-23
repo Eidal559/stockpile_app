@@ -71,7 +71,18 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <img 
+            src="/logo.png" 
+            alt="Stockpile Logo" 
+            className="w-16 h-16 object-contain"
+            onError={(e) => {
+              // Fallback to Package icon if logo doesn't exist
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        </div>
       </div>
     );
   }
